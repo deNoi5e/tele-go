@@ -149,7 +149,7 @@ func main() {
 					}
 
 					var download_link string = ("https://api.telegram.org/file/bot" + tgtoken + "/" + link.Result.FilePath)
-					var path string = ("/mnt/hdd/torrents/" + filename)
+					var path string = (path_for_tor + filename)
 					// var path string = (filename) // debug
 					var text string = "Torrent file received"
 
