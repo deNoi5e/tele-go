@@ -26,7 +26,7 @@ type JsonGetFile struct {
 }
 
 func main() {
-	content, err := ioutil.ReadFile("token")
+	content, err := ioutil.ReadFile("/mnt/hdd/token") // location token-file
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func main() {
 	}
 
 	bot.Debug = false
-	const path_for_tor = "/mnt/hdd/torrents/"
+	const path_for_tor = "/mnt/hdd/torrents/" // folder for torrent-files
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 	bot.Send(tgbotapi.NewMessage(36327828, "Bot started!"))
@@ -54,7 +54,7 @@ func main() {
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 			switch update.Message.Text { // Text-commands processing
-			case "/ls":
+			case "/ls": // will be removed
 				cmd := exec.Command("ls")
 				stdout, err := cmd.Output()
 
@@ -64,10 +64,10 @@ func main() {
 				}
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, string(stdout)))
 
-			case "/ping":
+			case "/ping": // Test condition bot
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "pong"))
 
-			case "/ovpnon":
+			case "/ovpnon": // starting openvpn service on OpenWrt
 				cmd := exec.Command("/etc/init.d/openvpn", "start")
 				stdout, err := cmd.Output()
 
@@ -78,7 +78,7 @@ func main() {
 
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "OpenVPN started."+string(string(stdout))))
 
-			case "/ovpnoff":
+			case "/ovpnoff": // stopping openvpn service on OpenWrt
 				cmd := exec.Command("/etc/init.d/openvpn", "stop")
 				stdout, err := cmd.Output()
 
@@ -93,7 +93,7 @@ func main() {
 
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "OpenVPN stopped."))
 
-			case "/reboot":
+			case "/reboot": // reboot OpenWrt router
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Rebooting..."))
 				cmd := exec.Command("reboot")
 				stdout, err := cmd.Output()
@@ -109,7 +109,7 @@ func main() {
 
 			}
 
-			if update.Message.Document != nil {
+			if update.Message.Document != nil { // There is no GetFile method in go-telegram-bot-api. This is its implementation.
 
 				if update.Message.Document.MimeType == "application/x-bittorrent" {
 					filename := string(update.Message.Document.FileName)
