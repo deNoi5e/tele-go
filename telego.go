@@ -93,6 +93,21 @@ func main() {
 
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "OpenVPN stopped."))
 
+			case "/kill":
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Bot killed."))
+				cmd := exec.Command("/etc/init.d/telebot", "stop")
+				stdout, err := cmd.Output()
+				
+				if err != nil {
+					fmt.Print(err.Error())
+					return
+				}
+
+				if stdout != nil {
+
+				}
+
+
 			case "/reboot": // reboot OpenWrt router
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Rebooting..."))
 				cmd := exec.Command("reboot")
