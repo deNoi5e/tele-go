@@ -31,18 +31,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tgtoken := string(content)
+	var token = string(content)
 
-	bot, err := tgbotapi.NewBotAPI(tgtoken)
+	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	bot.Debug = false
-	const path_for_tor = "/mnt/hdd/torrents/" // folder for torrent-files
+	const pathForTor = "/mnt/hdd/torrents/" // folder for torrent-files
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
-	bot.Send(tgbotapi.NewMessage(36327828, "Bot started!"))
+	_, err = bot.Send(tgbotapi.NewMessage(36327828, "Bot started!"))
+	if err != nil {
+		return
+	}
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -62,10 +65,17 @@ func main() {
 					fmt.Println(err.Error())
 					return
 				}
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, string(stdout)))
+				_, err = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, string(stdout)))
+				if err != nil {
+					log.Panic(err)
+					return
+				}
 
 			case "/ping": // Test condition bot
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "pong"))
+				_, err := bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "pong"))
+				if err != nil {
+					return
+				}
 
 			case "/ovpnon": // starting openvpn service on OpenWrt
 				cmd := exec.Command("/etc/init.d/openvpn", "start")
@@ -76,7 +86,10 @@ func main() {
 					return
 				}
 
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "OpenVPN started."+string(string(stdout))))
+				_, err = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "OpenVPN started."+string(stdout)))
+				if err != nil {
+					return
+				}
 
 			case "/ovpnoff": // stopping openvpn service on OpenWrt
 				cmd := exec.Command("/etc/init.d/openvpn", "stop")
@@ -91,13 +104,19 @@ func main() {
 
 				}
 
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "OpenVPN stopped."))
+				_, err = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "OpenVPN stopped."))
+				if err != nil {
+					return
+				}
 
 			case "/kill":
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Bot killed."))
+				_, err := bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Bot killed."))
+				if err != nil {
+					return
+				}
 				cmd := exec.Command("/etc/init.d/telebot", "stop")
 				stdout, err := cmd.Output()
-				
+
 				if err != nil {
 					fmt.Print(err.Error())
 					return
@@ -107,9 +126,11 @@ func main() {
 
 				}
 
-
 			case "/reboot": // reboot OpenWrt router
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Rebooting..."))
+				_, err := bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Rebooting..."))
+				if err != nil {
+					return
+				}
 				cmd := exec.Command("reboot")
 				stdout, err := cmd.Output()
 
@@ -128,16 +149,16 @@ func main() {
 
 				if update.Message.Document.MimeType == "application/x-bittorrent" {
 					filename := string(update.Message.Document.FileName)
-					fileid := update.Message.Document.FileID
+					fileId := update.Message.Document.FileID
 
 					var link JsonGetFile
-					var filelink string = ("https://api.telegram.org/bot" + tgtoken + "/getFile?file_id=" + fileid)
+					fileLink := "https://api.telegram.org/bot" + token + "/getFile?file_id=" + fileId
 
 					spaceClient := http.Client{
 						Timeout: time.Second * 2,
 					}
 
-					req, err := http.NewRequest(http.MethodGet, filelink, nil)
+					req, err := http.NewRequest(http.MethodGet, fileLink, nil)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -150,7 +171,12 @@ func main() {
 					}
 
 					if res.Body != nil {
-						defer res.Body.Close()
+						defer func(Body io.ReadCloser) {
+							err := Body.Close()
+							if err != nil {
+
+							}
+						}(res.Body)
 					}
 
 					body, readErr := ioutil.ReadAll(res.Body)
@@ -163,13 +189,19 @@ func main() {
 						log.Fatal(jsonErr)
 					}
 
-					var download_link string = ("https://api.telegram.org/file/bot" + tgtoken + "/" + link.Result.FilePath)
-					var path string = (path_for_tor + filename)
+					var downloadLink = "https://api.telegram.org/file/bot" + token + "/" + link.Result.FilePath
+					var path = pathForTor + filename
 					// var path string = (filename) // debug
-					var text string = "Torrent file received"
+					var text = "Torrent file received"
 
-					DownloadFile(path, download_link)
-					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, string(text)))
+					err = DownloadFile(path, downloadLink)
+					if err != nil {
+						return
+					}
+					_, err = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, string(text)))
+					if err != nil {
+						return
+					}
 				}
 
 			}
@@ -182,13 +214,23 @@ func DownloadFile(filepath string, url string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
 
-	out, err := os.Create(filepath)
+		}
+	}(resp.Body)
+
+	var out, _ = os.Create(filepath)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func(out *os.File) {
+		err := out.Close()
+		if err != nil {
+
+		}
+	}(out)
 
 	_, err = io.Copy(out, resp.Body)
 	return err
